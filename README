@@ -57,3 +57,12 @@ hash it to find its identifier, then find the node responsible for that key
 To use this functionality, run
 
 curl http://localhost:<port>/lookup?key=<key>
+
+
+To run a node in the background, use the command
+
+python3 chord.py <identifier> &
+
+A node running in the background can be shutdown using the command
+
+curl http://localhost:<port>/shutdown
