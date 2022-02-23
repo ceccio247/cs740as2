@@ -18,7 +18,7 @@ app = Flask(__name__)
 # the constant m for this chord setup
 # to have a good number of chord nodes we set m=6 for 64 possible identifiers
 
-M = 4
+M = 3
 
 # the identifier for this node
 # must be in the range [0,(2^m)-1]
@@ -41,7 +41,8 @@ initialized = False
 def closest_preceding_finger(identifier):
     # go from M to 1
     for i in range(M, 0, -1):
-        if(in_modulus_range(finger[i], node_id, identifier)):
+        if ((in_modulus_range(finger[i], node_id, identifier))
+            or (node_id == identifier)):
             return finger[i]
     return node_id
 
@@ -77,7 +78,6 @@ def find_successor(identifier):
     return get_successor(pred_id)
 
 def update_others():
-    return
     for i in range(1,M+1):
         p = find_predecessor((node_id - (2**(i-1)))%(2**M))
         send_update_finger_table(p, node_id, i)
@@ -99,26 +99,9 @@ def init_finger_table(other_node):
         else:
             finger[i+1] = get_find_successor(other_node, next_finger_start)
 
-
-def update_finger_predicate(s, index):
-    # what we really want to know is "is s closer to us than finger[i]"?
-    # we also have to take care of the case where finger[i]=n
-    # because that means finger[i] is 2**M away from us, NOT 0 away
-    finger_dist = (finger[index] - node_id) % (2**M)
-    if finger_dist == 0:
-        finger_dist = 2**M
-    new_dist = (s - node_id) % (2**M)
-    print(node_id)
-    print(s)
-    print(finger[index])
-
-    print(new_dist)
-    print(finger_dist)
-    return (new_dist < finger_dist)
-
 def update_finger_table(s, index):
-    print("PING")
-    if(update_finger_predicate(s, index)):
+    if(in_modulus_range(s, node_id, finger[index])
+        or (node_id == finger[index])):
         finger[index] = s
         p = predecessor
         send_update_finger_table(p, s, index)
