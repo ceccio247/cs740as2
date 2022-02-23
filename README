@@ -36,7 +36,8 @@ by using the command
 curl http://localhost:<port>/init?other=<other node id>
 
 where <other node id> is the id of an already initialized node
-
+This implementation of Chord does not support concurrent initialization
+To ensure that there is no livelock or disjoint loops, init nodes one at a time
 
 
 
@@ -66,3 +67,9 @@ python3 chord.py <identifier> &
 A node running in the background can be shutdown using the command
 
 curl http://localhost:<port>/shutdown
+
+
+
+By default this program produces no command line output. To allow for output
+showing a log of requests recieved by a node, comment out lines 16 and 17
+of chord.py

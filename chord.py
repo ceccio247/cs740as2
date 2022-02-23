@@ -10,6 +10,9 @@ import hashlib
 import requests
 
 
+# these two lines prevent all output from the node
+# to see a log of http requests sent to this node, comment out these lines
+
 logging.getLogger('werkzeug').disabled = True
 os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
@@ -212,7 +215,7 @@ def closest_preceding_finger_helper():
         identifier = int(request.args.get('id'))
     except:
         return {'message': 'You must provide a valid id'}
-    if ((identifier < 0) or (identifier >= (2**M)):
+    if ((identifier < 0) or (identifier >= (2**M))):
         return {'message': 'You must provide a valid id'}
     
     return {'finger': closest_preceding_finger(identifier)}
@@ -226,7 +229,7 @@ def find_successor_helper():
     except:
         return {'message': 'You must provide a valid id'}
 
-    if ((identifier < 0) or (identifier >= (2**M)):
+    if ((identifier < 0) or (identifier >= (2**M))):
         return {'message': 'You must provide a valid id'}
     
     return {'successor': find_successor(identifier)}
@@ -256,7 +259,7 @@ def update_finger_table_helper():
         s = int(request.args.get('s'))
     except:
         return {'message': 'You must provide a valid id'}
-    if ((s < 0) or (s >= (2**M)):
+    if ((s < 0) or (s >= (2**M))):
         return {'message': 'You must provide a valid id'}
     
     index = ''
