@@ -1,0 +1,59 @@
+This code and this readme can also be found at https://github.com/ceccion/cs740as2
+
+This implementation of Chord is written in python. To run it, you must install
+python3 as well as the packages flask and requests. To install these packages
+you can simply run pip3 install -r requirements.txt
+
+
+
+Every time you run this code you will start a Chord node running on localhost
+Near the top of the file, the value of m for the chord setup is defined as 6
+To use a different m, simply edit the file with the value of m you prefer
+
+To start a node, run the following:
+
+python3 chord.py <identifier>
+
+where the identifier is an integer in the range [0, (2^m)-1]
+
+This will start your chord node listening to the port 8000+<identifier>
+For example, if your chord node has the identifier 20, it listens to port 8020
+
+
+
+Nodes can be interacted with via the curl command line utility
+This will send GET requests to the node's endpoints, prompting the node to
+perform the desired actions
+
+Before anything can be done with a chord node, it must be initialized
+To intialize the first node, use the command
+
+curl http://localhost:<port>/init_alone
+
+After the node has been initialized, other nodes can be added to the system
+by using the command
+
+curl http://localhost:<port>/init?other=<other node id>
+
+where <other node id> is the id of an already initialized node
+
+
+
+
+After a node has been initialized, you can use it for all chord functions
+
+To find the successor node of a given id, run the command
+
+curl http://localhost:<port>/find_successor?id=<id>
+
+This will return the id of the node that succeeds this id
+As an example, if there are two nodes with ids 20 and 30, then looking up
+the successor of 25 should return 30
+
+
+
+We also implement key lookup. This will take a key (as a url-formatted string),
+hash it to find its identifier, then find the node responsible for that key
+To use this functionality, run
+
+curl http://localhost:<port>/lookup?key=<key>

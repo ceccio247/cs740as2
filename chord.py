@@ -10,22 +10,22 @@ import hashlib
 import requests
 
 
-#logging.getLogger('werkzeug').disabled = True
-#os.environ['WERKZEUG_RUN_MAIN'] = 'true'
+logging.getLogger('werkzeug').disabled = True
+os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
 app = Flask(__name__)
 
 # the constant m for this chord setup
 # to have a good number of chord nodes we set m=6 for 64 possible identifiers
 
-M = 3
+M = 6
 
 # the identifier for this node
 # must be in the range [0,(2^m)-1]
-node_id = 0
+node_id = -1
 
 # the predecessor of this node
-predecessor = -2
+predecessor = -1
 
 # finger table
 # we note that in the paper the finger table is indexed from 1
@@ -37,6 +37,8 @@ finger = [-1] * (M+1)
 initialized = False
 
 
+# finds the finger that is closest to identifier while preceeding it
+# found in figure 4 of the paper
 
 def closest_preceding_finger(identifier):
     # go from M to 1
@@ -63,6 +65,12 @@ def in_modulus_range(identifier, start, end):
                 ((identifier >= 0) and (identifier < end)))
 
 
+# finds the node that preceeds 'identifier' on the modulus ring
+# we add the clause of curr_id != get_successor(curr_id)
+# since our range function doesn't handle the case of (curr_id, curr_id]
+# the way the paper wants it to (i.e., everything is included in the range)
+# found in figure 4 of the paper
+
 def find_predecessor(identifier):
     curr_id = node_id
     while ((not in_modulus_range(identifier,
@@ -73,14 +81,25 @@ def find_predecessor(identifier):
     return curr_id
 
 
+# finds the node that succeeds 'identifier' on the modulus ring
+# found in figure 4 of the paper
+
 def find_successor(identifier):
     pred_id = find_predecessor(identifier)
     return get_successor(pred_id)
+
+
+# update all relevent nodes that this node could be a potential finger
+# found in figure 6 of the paper
 
 def update_others():
     for i in range(1,M+1):
         p = find_predecessor((node_id - (2**(i-1)))%(2**M))
         send_update_finger_table(p, node_id, i)
+
+
+# with the help of other_node, set up the finger table and the predecessor value
+# found in figure 6 of the paper
 
 def init_finger_table(other_node):
     finger[1] = get_find_successor(other_node, node_id)
@@ -99,6 +118,15 @@ def init_finger_table(other_node):
         else:
             finger[i+1] = get_find_successor(other_node, next_finger_start)
 
+
+
+# check if 's' should be the new entry for finger[index]
+# note that this differs from the paper as the range is fully exclusive
+# I do not know why the range in the paper is inclusive-exclusive
+# because that is just incorrect, I worked through it by hand and it
+# leads to fingers being updated when they shouldn't
+# found in figure 6 of the paper
+
 def update_finger_table(s, index):
     if(in_modulus_range(s, node_id, finger[index])
         or (node_id == finger[index])):
@@ -108,8 +136,12 @@ def update_finger_table(s, index):
 
 
 
-
-
+# the following 6 functions are used for inter-node communication
+# each one sends a request to the appropriate node
+# however, if the target node is the same as the node calling the function
+# these functions do not use network operations
+# because I had weird errors when a node tried to communicate with itself
+# and also its more efficient to not have to set up a connection
 
 def get_predecessor(identifier):
     # request the node with id 'identifier' to return its predecessor
@@ -117,9 +149,7 @@ def get_predecessor(identifier):
         return predecessor
 
     port = 8000 + identifier
-    print('getting pred of ' + str(identifier))
     r = requests.get('http://localhost:' + str(port) + '/predecessor')
-    print('get_pred result from ' + str(identifier) + ' = ' + str(r.json()['predecessor']))
     return r.json()['predecessor']
 
 def get_successor(identifier):
@@ -128,7 +158,6 @@ def get_successor(identifier):
         return finger[1]
 
     port = 8000 + identifier
-    print('getting suc of ' + str(identifier))
     r = requests.get('http://localhost:' + str(port) + '/successor')
     return int(r.json()['successor'])
 
@@ -137,7 +166,6 @@ def get_closest_preceding_finger(identifier, target_id):
         return closest_preceding_finger(target_id)
 
     port = 8000 + identifier
-    print('getting closest_prec of ' + str(identifier))
     r = requests.get('http://localhost:' + str(port) + '/closest_preceding_finger' + 
                     '?id=' + str(target_id))
     return r.json()['finger']
@@ -148,14 +176,12 @@ def get_find_successor(identifier, target_id):
         return find_successor(target_id)
 
     port = 8000+identifier
-    print('getting find successor of ' + str(identifier))
     r = requests.get('http://localhost:' + str(port) + '/find_successor' + 
                     '?id=' + str(target_id))
     return r.json()['successor']
     
 
 def send_update_finger_table(identifier, target_id, index):
-    print('updating finger table of ' + str(identifier))
     if identifier == node_id:
         update_finger_table(target_id, index)
         return
@@ -170,7 +196,6 @@ def send_set_predecessor(identifier, target_id):
         predecessor = target_id
         return
 
-    print('updating pred of ' + str(identifier) + " to " + str(target_id))
     port = 8000+identifier
     r = requests.get('http://localhost:' + str(port) + '/set_predecessor' +
                     '?id=' + str(target_id))
@@ -187,6 +212,8 @@ def closest_preceding_finger_helper():
         identifier = int(request.args.get('id'))
     except:
         return {'message': 'You must provide a valid id'}
+    if ((identifier < 0) or (identifier >= (2**M)):
+        return {'message': 'You must provide a valid id'}
     
     return {'finger': closest_preceding_finger(identifier)}
 
@@ -198,10 +225,13 @@ def find_successor_helper():
         identifier = int(request.args.get('id'))
     except:
         return {'message': 'You must provide a valid id'}
+
+    if ((identifier < 0) or (identifier >= (2**M)):
+        return {'message': 'You must provide a valid id'}
     
     return {'successor': find_successor(identifier)}
 
-
+# calculate the id of a key and lookup which node is responsible for it
 @app.route('/lookup')
 def key_lookup():
     key = ''
@@ -213,7 +243,11 @@ def key_lookup():
 
     # now that we have the id, we perform the find_successor function
     # as described in figure 4 of the paper
-    return {'responsible_node': find_successor(key_id)}
+    return {
+        'key_id': key_id,
+        'responsible_node': find_successor(key_id)
+    }
+
 
 @app.route('/update_finger_table')
 def update_finger_table_helper():
@@ -222,29 +256,34 @@ def update_finger_table_helper():
         s = int(request.args.get('s'))
     except:
         return {'message': 'You must provide a valid id'}
+    if ((s < 0) or (s >= (2**M)):
+        return {'message': 'You must provide a valid id'}
     
     index = ''
     try:
         index = int(request.args.get('index'))
     except:
         return {'message': 'You must provide a valid index'}
+    if ((s < 1) or (s > M)):
+        return {'message': 'You must provide a valid index'}
+
     update_finger_table(s, index)
     return {'message': 'done'}
 
 
-@app.route('/hello')
-def hello():
-    return 'Hello, World! My identifier is ' + str(node_id)
-
-@app.route('/dump_fingers')
+# return the entire finger table of this node
+# only used for debugging and verification of correctness
+@app.route('/get_finger_table')
 def dunp_fingers():
     return {'fingers': finger}
 
 
+# return the predecessor of this node
 @app.route('/predecessor')
 def return_predecessor():
     return {'predecessor': predecessor}
 
+# set the predecessor of this node to the 'id' argument
 @app.route('/set_predecessor')
 def set_predecessor():
     global predecessor
@@ -261,6 +300,7 @@ def set_predecessor():
     predecessor = identifier
     return {'predecessor': predecessor}
 
+# return the successor of this node
 @app.route('/successor')
 def return_successor():
     return {'successor': finger[1]}
@@ -279,7 +319,7 @@ def init_with_other():
         return {'message': 'You must provide a valid id'}
     
     if ((other < 0) or (other > ((2**M)-1))):
-        return {'message': "ERROR: Other node identifier is not in the range [0,(2^m)-1]"}
+        return {'message': "Other node identifier is not in the range [0,(2^m)-1]"}
 
     init_finger_table(other)
     update_others()
@@ -288,6 +328,7 @@ def init_with_other():
 
     return {'message': 'init complete'}
 
+# initialize as the first node in a chord setup
 @app.route('/init_alone')
 def init_alone():
     global predecessor
