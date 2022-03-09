@@ -13,8 +13,8 @@ import requests
 # these two lines prevent all output from the node
 # to see a log of http requests sent to this node, comment out these lines
 
-logging.getLogger('werkzeug').disabled = True
-os.environ['WERKZEUG_RUN_MAIN'] = 'true'
+#logging.getLogger('werkzeug').disabled = True
+#os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
 app = Flask(__name__)
 
@@ -47,7 +47,7 @@ def closest_preceding_finger(identifier):
     # go from M to 1
     for i in range(M, 0, -1):
         if ((in_modulus_range(finger[i], node_id, identifier))
-            or (node_id == identifier)):
+            or ((node_id == identifier) and (node_id != finger[i]))):
             return finger[i]
     return node_id
 
