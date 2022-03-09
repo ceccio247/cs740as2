@@ -4,6 +4,14 @@ This implementation of Chord is written in python. To run it, you must install
 python3 as well as the packages flask and requests. To install these packages
 you can simply run pip3 install -r requirements.txt
 
+To quickly get started with this implementation of chord, we have provided three
+shell scripts that automate starting, initializing, and shutting down 32 chord serves.
+To start the servers, run startup.sh. This will start 32 servers with even
+identifiers from 0 to 62. Wait a second then run init.sh to initialize the
+internal state of the servers. This should take ~30 seconds to complete.
+When you are done using the servers, run shutdown.sh to stop all of the servers.
+
+
 
 
 Every time you run this code you will start a Chord node running on localhost

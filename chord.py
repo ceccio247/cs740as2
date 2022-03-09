@@ -267,7 +267,7 @@ def update_finger_table_helper():
         index = int(request.args.get('index'))
     except:
         return {'message': 'You must provide a valid index'}
-    if ((s < 1) or (s > M)):
+    if ((index < 1) or (index > M)):
         return {'message': 'You must provide a valid index'}
 
     update_finger_table(s, index)
@@ -359,7 +359,7 @@ def shutdown_server():
 @app.route('/shutdown')
 def shutdown():
     shutdown_server()
-    return 'Server shutting down...'
+    return 'Server shutting down...\n'
 
 if __name__ == "__main__":
     # retrieve this node's identifier from the command line
