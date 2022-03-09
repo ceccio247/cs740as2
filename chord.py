@@ -13,8 +13,8 @@ import requests
 # these two lines prevent all output from the node
 # to see a log of http requests sent to this node, comment out these lines
 
-#logging.getLogger('werkzeug').disabled = True
-#os.environ['WERKZEUG_RUN_MAIN'] = 'true'
+logging.getLogger('werkzeug').disabled = True
+os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
 app = Flask(__name__)
 
